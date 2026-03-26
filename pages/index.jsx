@@ -8,7 +8,7 @@ const TEMPLATE_TYPES = ["General Follow-Up", "Membership", "Sponsorship", "Counc
 const CONTACT_TAGS = ["OE Member","OE Non-Member","OE Prospect","OE Affiliate","OE Affiliate Prospect","OE Thought Leader","AM Member","AM Non-Member","AM Prospect","AM Affiliate","AM Affiliate Prospect","AM Channel Partner","AM Thought Leader","OEM","Supplier Prospect"];
 const MARKET_SEGMENTS = ["🚗 Auto", "🚚 Commercial Vehicle", "💚 Reman"];
 const STATUSES = ["🎉 New", "📲 Contacted", "🥤 In Progress", "✅ Complete"];
-const PRIORITIES = ["🌶️ Hot", "☀️ Warm", "🥶Cold"];
+const PRIORITIES = ["🌶️ Hot", "☀️ Warm", "🥶 Cold"];
 
 const RED = "#E71A13";
 
@@ -182,7 +182,7 @@ export default function Home() {
         contact_type: "",
         segments: newSegments,
         contact_tags: newTags,
-        status: "New", priority: "Cold",
+        status: "New", priority: "🥶 Cold",
         added_at: new Date().toLocaleDateString(),
         encounters: [{ event: eventName || "Unknown Event", metBy: myName || "Me", notes: noteText, date: new Date().toLocaleDateString() }]
       };
@@ -453,8 +453,8 @@ export default function Home() {
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                       <span style={{fontFamily:"'DM Serif Display',serif",fontSize:"1.05rem",color:"#323232"}}>{c.name||<span style={{color:"#aaa"}}>Unknown</span>}</span>
-                      {c.priority==="Hot"&&<span style={{background:"#fff0f0",color:RED,borderRadius:20,padding:"1px 8px",fontSize:"0.72rem",fontWeight:700}}>🔴 Hot</span>}
-                      {c.priority==="Warm"&&<span style={{background:"#fff8e1",color:"#b8860b",borderRadius:20,padding:"1px 8px",fontSize:"0.72rem",fontWeight:700}}>🟡 Warm</span>}
+                      {c.priority==="🌶️ Hot"&&<span style={{background:"#fff0f0",color:RED,borderRadius:20,padding:"1px 8px",fontSize:"0.72rem",fontWeight:700}}>🌶️ Hot</span>}
+                      {c.priority==="☀️ Warm"&&<span style={{background:"#fff8e1",color:"#b8860b",borderRadius:20,padding:"1px 8px",fontSize:"0.72rem",fontWeight:700}}>☀️ Warm</span>}
                       {isOverdue(c.follow_up_date)&&<span className="badge br">Overdue</span>}
                       {isDueSoon(c.follow_up_date)&&!isOverdue(c.follow_up_date)&&<span className="badge ba">Due Soon</span>}
                       {c.event_name&&<span className="badge bb">{c.event_name}</span>}
