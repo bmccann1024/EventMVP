@@ -9,7 +9,6 @@ const CONTACT_TAGS = [“OE Member”,“OE Non-Member”,“OE Prospect”,“O
 const MARKET_SEGMENTS = [“🚗 Auto”, “🚚 Commercial Vehicle”, “💚 Reman”];
 const STATUSES = [“New”, “Contacted”, “In Progress”, “Closed”];
 const PRIORITIES = [“🌶️ Hot”, “☀️ Warm”, “🥶 Cold”];
-
 const RED = “#E71A13”;
 
 async function dbGetContacts() {
@@ -126,8 +125,8 @@ const [newTags, setNewTags] = useState([]);
 const fileRef = useRef();
 
 useEffect(() => {
-const savedKey = localStorage.getItem(“EVENTMVP_apikey”);
-const savedName = localStorage.getItem(“EVENTMVP_name”);
+const savedKey = localStorage.getItem(“eventmvp_apikey”);
+const savedName = localStorage.getItem(“eventmvp_name”);
 if (savedKey) { setApiKey(savedKey); setApiKeySaved(true); }
 if (savedName) setMyName(savedName);
 dbGetContacts().then(data => {
@@ -182,14 +181,15 @@ met_by: myName || “Me”,
 contact_type: “”,
 segments: newSegments,
 contact_tags: newTags,
-status: “New”, priority: “Cold”,
+status: “New”,
+priority: “🥶 Cold”,
 added_at: new Date().toLocaleDateString(),
 encounters: [{ event: eventName || “Unknown Event”, metBy: myName || “Me”, notes: noteText, date: new Date().toLocaleDateString() }]
 };
 const dup = contacts.find(c => isSimilar(c, newContact));
 if (dup) { setDupWarning({ existing: dup, incoming: newContact }); setLoading(false); setStatus(””); return; }
 const saved = await dbAddContact(newContact);
-if (Array.isArray(saved) && saved[0]) setContacts(prev => [{ …saved[0], segments: saved[0].segments || [], channels: saved[0].channels || [] }, …prev]);
+if (Array.isArray(saved) && saved[0]) setContacts(prev => [{ …saved[0], segments: saved[0].segments || [], contact_tags: saved[0].contact_tags || [] }, …prev]);
 setStatus(“✅ Contact added!”);
 setNoteText(””); setCardImage(null); setCardBase64(null); setNewSegments([]); setNewTags([]);
 setTimeout(() => { setStatus(””); setTab(“list”); }, 1200);
@@ -211,7 +211,7 @@ const handleGenerateEmail = async (contact) => {
 if (!apiKeySaved) return;
 setGeneratingEmail(true); setEmailDraft(””);
 try {
-const text = await callClaude(apiKey, [{ role: “user”, content: `Write a professional, warm, personalized follow-up email.\nTemplate: ${emailTemplateType}\nName: ${contact.name}\nTitle: ${contact.title}\nCompany: ${contact.company}\nContact classification: ${(contact.contact_tags||[]).join(", ")}\nMarket segments: ${(contact.segments||[]).join(", ")}\nChannels: ${(contact.channels||[]).join(", ")}\nEvent: ${contact.event_name}\nMet by: ${contact.met_by}\nNotes: ${contact.notes}\nFollow-up task: ${contact.follow_up_task}\nWrite only the email body, no subject line. Sign off as ${contact.met_by || "the team"}.` }]);
+const text = await callClaude(apiKey, [{ role: “user”, content: `Write a professional, warm, personalized follow-up email.\nTemplate: ${emailTemplateType}\nName: ${contact.name}\nTitle: ${contact.title}\nCompany: ${contact.company}\nContact classification: ${(contact.contact_tags||[]).join(", ")}\nMarket segments: ${(contact.segments||[]).join(", ")}\nEvent: ${contact.event_name}\nMet by: ${contact.met_by}\nNotes: ${contact.notes}\nFollow-up task: ${contact.follow_up_task}\nWrite only the email body, no subject line. Sign off as ${contact.met_by || "the team"}.` }]);
 setEmailDraft(text);
 } catch (e) { setEmailDraft(“Error: “ + e.message); }
 setGeneratingEmail(false);
@@ -252,18 +252,18 @@ const dueSoonCount = contacts.filter(c=>isDueSoon(c.follow_up_date)).length;
 
 return (
 <div style={{minHeight:“100vh”,background:”#FFFFFF”,fontFamily:”‘DM Sans’,sans-serif”,color:”#323232”}}>
-<style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Serif+Display&display=swap'); *{box-sizing:border-box;margin:0;padding:0} ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:#ccc;border-radius:3px} .inp{width:100%;background:#fff;border:1.5px solid #ddd;border-radius:8px;color:#323232;font-family:'DM Sans',sans-serif;font-size:0.9rem;padding:10px 14px;outline:none;transition:border 0.2s} .inp:focus{border-color:${RED}} .btn{border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;transition:all 0.18s} .btn-p{background:${RED};color:#fff;padding:11px 22px;font-size:0.92rem} .btn-p:hover:not(:disabled){background:#aa1515;transform:translateY(-1px);box-shadow:0 4px 12px #cc1f1f44} .btn-p:disabled{opacity:0.4;cursor:not-allowed} .btn-g{background:#e8e8e8;color:#333;padding:9px 18px;font-size:0.85rem} .btn-g:hover{background:#ddd} .btn-d{background:#fff0f0;color:${RED};padding:7px 14px;font-size:0.82rem;border:1px solid #ffcccc} .btn-d:hover{background:#ffe0e0} .card{background:#fff;border:1.5px solid #e0e0e0;border-radius:12px;padding:22px} .tab-btn{background:none;border:none;font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:500;cursor:pointer;padding:9px 16px;border-radius:6px;color:#666;transition:all 0.15s} .tab-btn.active{background:${RED};color:#fff;font-weight:600} .tab-btn:hover:not(.active){background:#e8e8e8;color:#111} .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:0.72rem;font-weight:600} .br{background:#fff0f0;color:${RED}}.ba{background:#fff8e1;color:#b8860b}.bg{background:#f0faf0;color:#2e7d32}.bb{background:#f0f4ff;color:#1a56b0} .cc{background:#fff;border:1.5px solid #e0e0e0;border-radius:12px;padding:18px;transition:all 0.18s;cursor:pointer} .cc:hover{border-color:#cc1f1f66;box-shadow:0 3px 16px #0000000a;transform:translateY(-1px)} .cc.sel{border-color:${RED};box-shadow:0 3px 20px #cc1f1f18} .uz{border:2px dashed #ccc;border-radius:10px;padding:26px;text-align:center;cursor:pointer;transition:all 0.2s;background:#fafafa} .uz:hover{border-color:${RED};background:#fff5f5} select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px} .dv{height:1px;background:#ebebeb;margin:18px 0} .eb{background:#fafafa;border:1.5px solid #e0e0e0;border-radius:8px;padding:14px;font-size:0.87rem;line-height:1.75;white-space:pre-wrap;color:#222} .ep{background:#f8f8f8;border-radius:8px;padding:8px 12px;font-size:0.82rem;color:#444;border-left:3px solid ${RED}} .pulse{animation:pulse 1.8s infinite}@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}} textarea.inp{resize:vertical;min-height:100px} .g2{display:grid;grid-template-columns:1fr 1fr;gap:12px} @media(max-width:600px){.g2{grid-template-columns:1fr}} .lbl{font-size:0.78rem;font-weight:600;color:#666;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em}`}</style>
+<style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Serif+Display&display=swap'); *{box-sizing:border-box;margin:0;padding:0} ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:#ccc;border-radius:3px} .inp{width:100%;background:#fff;border:1.5px solid #ddd;border-radius:8px;color:#323232;font-family:'DM Sans',sans-serif;font-size:0.9rem;padding:10px 14px;outline:none;transition:border 0.2s} .inp:focus{border-color:${RED}} .btn{border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;transition:all 0.18s} .btn-p{background:${RED};color:#fff;padding:11px 22px;font-size:0.92rem} .btn-p:hover:not(:disabled){background:#aa1515;transform:translateY(-1px);box-shadow:0 4px 12px #E71A1344} .btn-p:disabled{opacity:0.4;cursor:not-allowed} .btn-g{background:#e8e8e8;color:#333;padding:9px 18px;font-size:0.85rem} .btn-g:hover{background:#ddd} .btn-d{background:#fff0f0;color:${RED};padding:7px 14px;font-size:0.82rem;border:1px solid #ffcccc} .btn-d:hover{background:#ffe0e0} .card{background:#fff;border:1.5px solid #e0e0e0;border-radius:12px;padding:22px} .tab-btn{background:none;border:none;font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:500;cursor:pointer;padding:9px 16px;border-radius:6px;color:#666;transition:all 0.15s} .tab-btn.active{background:${RED};color:#fff;font-weight:600} .tab-btn:hover:not(.active){background:#e8e8e8;color:#111} .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:0.72rem;font-weight:600} .br{background:#fff0f0;color:${RED}}.ba{background:#fff8e1;color:#b8860b}.bg{background:#f0faf0;color:#2e7d32}.bb{background:#f0f4ff;color:#1a56b0} .cc{background:#fff;border:1.5px solid #e0e0e0;border-radius:12px;padding:18px;transition:all 0.18s;cursor:pointer} .cc:hover{border-color:#E71A1366;box-shadow:0 3px 16px #0000000a;transform:translateY(-1px)} .cc.sel{border-color:${RED};box-shadow:0 3px 20px #E71A1318} .uz{border:2px dashed #ccc;border-radius:10px;padding:26px;text-align:center;cursor:pointer;transition:all 0.2s;background:#fafafa} .uz:hover{border-color:${RED};background:#fff5f5} select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px} .dv{height:1px;background:#ebebeb;margin:18px 0} .eb{background:#fafafa;border:1.5px solid #e0e0e0;border-radius:8px;padding:14px;font-size:0.87rem;line-height:1.75;white-space:pre-wrap;color:#222} .ep{background:#f8f8f8;border-radius:8px;padding:8px 12px;font-size:0.82rem;color:#444;border-left:3px solid ${RED}} .pulse{animation:pulse 1.8s infinite}@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}} textarea.inp{resize:vertical;min-height:100px} .g2{display:grid;grid-template-columns:1fr 1fr;gap:12px} @media(max-width:600px){.g2{grid-template-columns:1fr}} .lbl{font-size:0.78rem;font-weight:600;color:#666;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em} a{cursor:pointer}`}</style>
 
 ```
   {/* Header */}
   <div style={{background:"#fff",borderBottom:"1.5px solid #e0e0e0",padding:"0 24px",position:"sticky",top:0,zIndex:50,boxShadow:"0 1px 4px #0000000a"}}>
     <div style={{maxWidth:920,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 0 0"}}>
       <div style={{display:"flex",alignItems:"center",gap:12}}>
-        <div style={{width:32,height:32,background:RED,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center"}}>
-          <span style={{color:"#fff",fontSize:"1rem"}}>📇</span>
+        <div style={{width:36,height:36,background:RED,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <span style={{color:"#fff",fontSize:"1.2rem"}}>📇</span>
         </div>
         <div>
-          <div style={{fontFamily:"'DM Serif Display',serif",fontSize:"1.4rem",color:"#323232",letterSpacing:"-0.3px"}}>EventDesk</div>
+          <div style={{fontFamily:"'DM Serif Display',serif",fontSize:"1.4rem",color:"#323232",letterSpacing:"-0.3px"}}>EventMVP</div>
           <div style={{fontSize:"0.68rem",color:"#999",textTransform:"uppercase",letterSpacing:"0.08em"}}>Team Contact Tracker</div>
         </div>
       </div>
@@ -288,8 +288,8 @@ return (
     {tab==="settings"&&(
       <div style={{display:"flex",flexDirection:"column",gap:18,maxWidth:500}}>
         <div className="card">
-          <div style={{fontFamily:"'DM Serif Display',serif",fontSize:"1.1rem",marginBottom:14,color:"#323232"}}>🔑 Anthropic API Key</div>
-          <p style={{fontSize:"0.85rem",color:"#666",marginBottom:14,lineHeight:1.6}}>Get a free key at <strong>console.anthropic.com</strong>. Saved to your browser only — never shared.</p>
+          <div style={{fontFamily:"'DM Serif Display',serif",fontSize:"1.1rem",marginBottom:14}}>🔑 Anthropic API Key</div>
+          <p style={{fontSize:"0.85rem",color:"#666",marginBottom:14,lineHeight:1.6}}>Get a free key at <strong>console.anthropic.com</strong>. Saved to your browser only.</p>
           <input className="inp" type="password" placeholder="sk-ant-..." value={apiKey} onChange={e=>setApiKey(e.target.value)}/>
           <div style={{display:"flex",gap:10,marginTop:12,alignItems:"center"}}>
             <button className="btn btn-p" onClick={()=>{localStorage.setItem("eventmvp_apikey",apiKey);setApiKeySaved(true);setStatus("✅ Saved!");setTimeout(()=>setStatus(""),2000)}}>Save Key</button>
@@ -297,7 +297,7 @@ return (
           </div>
         </div>
         <div className="card">
-          <div style={{fontFamily:"'DM Serif Display',serif",fontSize:"1.1rem",marginBottom:12,color:"#323232"}}>👤 Your Name</div>
+          <div style={{fontFamily:"'DM Serif Display',serif",fontSize:"1.1rem",marginBottom:12}}>👤 Your Name</div>
           <p style={{fontSize:"0.85rem",color:"#666",marginBottom:12}}>Used to track who met each contact at events.</p>
           <input className="inp" type="text" placeholder="e.g. Shannon" value={myName} onChange={e=>{setMyName(e.target.value);localStorage.setItem("eventmvp_name",e.target.value)}}/>
         </div>
@@ -309,12 +309,10 @@ return (
     {tab==="add"&&(
       <div style={{display:"flex",flexDirection:"column",gap:16}}>
         {!apiKeySaved&&<div style={{background:"#fff8e1",border:"1.5px solid #ffe082",borderRadius:10,padding:"13px 18px",fontSize:"0.88rem",color:"#7a5c00"}}>⚠ Go to <strong>Settings</strong> to save your API key first.</div>}
-
         <div className="g2">
           <div><label className="lbl">Event Name</label><input className="inp" type="text" placeholder="e.g. AAPEX 2026" value={eventName} onChange={e=>setEventName(e.target.value)}/></div>
           <div><label className="lbl">Met By</label><input className="inp" type="text" placeholder={myName||"Your name"} value={myName} onChange={e=>setMyName(e.target.value)}/></div>
         </div>
-
         <div className="card">
           <div style={{fontFamily:"'DM Serif Display',serif",fontSize:"1rem",marginBottom:14}}>📸 Business Card</div>
           {!cardImage?(
@@ -331,13 +329,11 @@ return (
           )}
           <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={handleImageUpload}/>
         </div>
-
         <div className="card">
           <div style={{fontFamily:"'DM Serif Display',serif",fontSize:"1rem",marginBottom:6}}>🎤 Notes</div>
           <p style={{fontSize:"0.82rem",color:"#888",marginBottom:12}}>Paste voice-to-text or type. Include follow-up timing like "follow up next week".</p>
           <textarea className="inp" rows={4} placeholder='e.g. "Met David Chen, VP Sales at TechCorp. Interested in gold sponsorship. Follow up in 3 days."' value={noteText} onChange={e=>setNoteText(e.target.value)}/>
         </div>
-
         <div className="card">
           <div style={{fontFamily:"'DM Serif Display',serif",fontSize:"1rem",marginBottom:16}}>🏷 Classification</div>
           <div style={{display:"flex",flexDirection:"column",gap:14}}>
@@ -346,12 +342,11 @@ return (
               <MultiPill options={MARKET_SEGMENTS} value={newSegments} onChange={setNewSegments}/>
             </div>
             <div>
-              <label className="lbl">Contact Classification (select all that apply)</label>
+              <label className="lbl">Contact Classification</label>
               <MultiPill options={CONTACT_TAGS} value={newTags} onChange={setNewTags}/>
             </div>
           </div>
         </div>
-
         {dupWarning&&(
           <div style={{background:"#fff8e1",border:"1.5px solid #ffe082",borderRadius:12,padding:18}}>
             <div style={{fontFamily:"'DM Serif Display',serif",fontWeight:700,marginBottom:8,color:"#7a5c00"}}>⚠ Duplicate Detected</div>
@@ -364,7 +359,6 @@ return (
             </div>
           </div>
         )}
-
         {status&&!dupWarning&&(
           <div style={{background:status.includes("✅")?"#f0faf0":"#fff8e1",border:`1.5px solid ${status.includes("✅")?"#c8e6c9":"#ffe082"}`,borderRadius:8,padding:"11px 16px",color:status.includes("✅")?"#2e7d32":"#7a5c00",fontSize:"0.88rem"}} className={loading?"pulse":""}>
             {status}
@@ -402,7 +396,7 @@ return (
             <option value="">All Classifications</option>
             {CONTACT_TAGS.map(t=><option key={t} value={t}>{t}</option>)}
           </select>
-          {(filterSegment||filterTag||filterEvent||filterStatus||search)&&<button className="btn btn-g" onClick={()=>{setFilterSegment("");setFilterTag("");setFilterEvent("");setFilterStatus("");setSearch("");}}>✕ Clear Filters</button>}
+          {(filterSegment||filterTag||filterEvent||filterStatus||search)&&<button className="btn btn-g" onClick={()=>{setFilterSegment("");setFilterTag("");setFilterEvent("");setFilterStatus("");setSearch("");}}>✕ Clear</button>}
         </div>
 
         {loadingContacts&&<div style={{textAlign:"center",padding:"40px 0",color:"#aaa"}}>Loading contacts...</div>}
@@ -420,26 +414,24 @@ return (
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                   <span style={{fontFamily:"'DM Serif Display',serif",fontSize:"1.05rem",color:"#323232"}}>{c.name||<span style={{color:"#aaa"}}>Unknown</span>}</span>
-                  {c.priority==="Hot"&&<span style={{background:"#fff0f0",color:RED,borderRadius:20,padding:"1px 8px",fontSize:"0.72rem",fontWeight:700}}>🔴 Hot</span>}
-                  {c.priority==="Warm"&&<span style={{background:"#fff8e1",color:"#b8860b",borderRadius:20,padding:"1px 8px",fontSize:"0.72rem",fontWeight:700}}>🟡 Warm</span>}
+                  {c.priority==="🌶️ Hot"&&<span style={{background:"#fff0f0",color:RED,borderRadius:20,padding:"1px 8px",fontSize:"0.72rem",fontWeight:700}}>🌶️ Hot</span>}
+                  {c.priority==="☀️ Warm"&&<span style={{background:"#fff8e1",color:"#b8860b",borderRadius:20,padding:"1px 8px",fontSize:"0.72rem",fontWeight:700}}>☀️ Warm</span>}
                   {isOverdue(c.follow_up_date)&&<span className="badge br">Overdue</span>}
                   {isDueSoon(c.follow_up_date)&&!isOverdue(c.follow_up_date)&&<span className="badge ba">Due Soon</span>}
                   {c.event_name&&<span className="badge bb">{c.event_name}</span>}
                 </div>
                 <div style={{color:"#666",fontSize:"0.83rem",marginTop:2}}>{[c.title,c.company].filter(Boolean).join(" · ")}</div>
-                {c.contact_type&&<div style={{marginTop:4}}><span style={{background:"#f0f0f0",color:"#444",borderRadius:4,padding:"1px 8px",fontSize:"0.75rem",fontWeight:600}}>{c.contact_type}</span></div>}
                 <div style={{marginTop:6}}>
                   <PillDisplay values={c.segments}/>
-                  <PillDisplay values={c.channels}/>
+                  <PillDisplay values={c.contact_tags}/>
                 </div>
-                <div style={{display:"flex",gap:12,flexWrap:"wrap",marginTop:8,fontSize:"0.81rem",color:"#555"}}>
-                  {c.email&&<a href={`mailto:${c.email}`} style={{color:"#323232",textDecoration:"none"}} onClick={e=>e.stopPropagation()}>✉ {c.email}</a>}
-                  {c.phone&&<a href={`tel:${c.phone}`} style={{color:"#323232",textDecoration:"none"}} onClick={e=>e.stopPropagation()}>📞 {c.phone}</a>}
+                <div style={{display:"flex",gap:12,flexWrap:"wrap",marginTop:8,fontSize:"0.81rem"}}>
+                  {c.email&&<a href={`mailto:${c.email}`} style={{color:RED,textDecoration:"none",fontWeight:500}} onClick={e=>e.stopPropagation()}>✉ {c.email}</a>}
+                  {c.phone&&<a href={`tel:${c.phone}`} style={{color:RED,textDecoration:"none",fontWeight:500}} onClick={e=>e.stopPropagation()}>📞 {c.phone}</a>}
                   {c.met_by&&<span style={{color:"#999"}}>👤 {c.met_by}</span>}
                 </div>
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end",flexShrink:0}}>
-                
                 <select className="inp" style={{width:145,fontSize:"0.8rem",padding:"5px 28px 5px 10px"}} value={c.status}
                   onChange={e=>{e.stopPropagation();handleUpdateField(c.id,"status",e.target.value)}}>
                   {STATUSES.map(s=><option key={s}>{s}</option>)}
@@ -454,7 +446,6 @@ return (
             {selectedContact?.id===c.id&&(
               <div onClick={e=>e.stopPropagation()}>
                 <div className="dv"/>
-
                 <div style={{marginBottom:14}}>
                   <label className="lbl">Market Segment</label>
                   <MultiPill options={MARKET_SEGMENTS} value={c.segments||[]} onChange={v=>handleUpdateField(c.id,"segments",v)}/>
@@ -463,7 +454,6 @@ return (
                   <label className="lbl">Contact Classification</label>
                   <MultiPill options={CONTACT_TAGS} value={c.contact_tags||[]} onChange={v=>handleUpdateField(c.id,"contact_tags",v)}/>
                 </div>
-
                 {c.encounters?.length>1&&(
                   <div style={{marginBottom:14}}>
                     <label className="lbl">Past Encounters</label>
@@ -476,21 +466,18 @@ return (
                     </div>
                   </div>
                 )}
-
                 {c.notes&&(
                   <div style={{marginBottom:14}}>
                     <label className="lbl">Notes</label>
                     <div style={{background:"#fafafa",borderRadius:8,padding:"10px 14px",fontSize:"0.85rem",color:"#333",lineHeight:1.65,border:"1px solid #ebebeb"}}>{c.notes}</div>
                   </div>
                 )}
-
                 {c.follow_up_task&&(
                   <div style={{marginBottom:14,background:isOverdue(c.follow_up_date)?"#fff0f0":"#fff8e1",borderRadius:8,padding:"10px 14px",fontSize:"0.85rem",borderLeft:`3px solid ${isOverdue(c.follow_up_date)?RED:"#f0ad00"}`}}>
                     <strong style={{color:isOverdue(c.follow_up_date)?RED:"#7a5c00"}}>🔔 {c.follow_up_task}</strong>
                     {c.follow_up_date&&<span style={{color:"#888"}}> · {c.follow_up_date}</span>}
                   </div>
                 )}
-
                 <div className="dv"/>
                 <label className="lbl">✉ Generate Follow-Up Email</label>
                 <div style={{display:"flex",gap:10,marginBottom:12,flexWrap:"wrap"}}>
@@ -507,7 +494,6 @@ return (
                     <button className="btn btn-g" style={{marginTop:10}} onClick={()=>navigator.clipboard?.writeText(emailDraft)}>📋 Copy Email</button>
                   </div>
                 )}
-
                 <div className="dv"/>
                 <button className="btn btn-d btn" onClick={()=>handleDelete(c.id)}>🗑 Delete Contact</button>
               </div>
@@ -522,3 +508,5 @@ return (
 
 );
 }
+
+  
