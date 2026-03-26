@@ -4,7 +4,7 @@ export default function Document() {
   return (
     <Html>
       <Head>
-        <link rel="icon" href="/faviconmvp.ico" />
+        <link rel="icon" href="/MVPFavicon.ico" />
       </Head>
       <body>
         <Main />
