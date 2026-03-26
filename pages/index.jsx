@@ -5,6 +5,7 @@ const SUPABASE_URL = "https://mfrqfbgtnmxmiajymsjt.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mcnFmYmd0bm14bWlhanltc2p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0ODUwOTQsImV4cCI6MjA5MDA2MTA5NH0.Ub3jN--Ai__o3TfEOKg077C-ma_RspF38-1JUZnEzqw";
 
 const TEMPLATE_TYPES = ["General Follow-Up", "Membership", "Sponsorship", "Council", "Partnership", "Demo Request"];
+const CONTACT_TYPES = ["", "Member", "Non-Member", "Prospect", "Distributor", "Buyers Group", "Channel Partner", "Thought Leader / Speaker", "Sponsor", "Affiliate", "Affiliate Prospect"];
 const STATUSES = ["New", "Contacted", "In Progress", "Closed"];
 const PRIORITIES = ["🔴 Hot", "🟡 Warm", "⚪ Cold"];
 
@@ -144,6 +145,7 @@ export default function Home() {
         follow_up_date: noteData.followUpDate || "",
         event_name: eventName || "Unknown Event",
         met_by: myName || "Me",
+        contact_type: "",
         status: "New", priority: "⚪ Cold",
         added_at: new Date().toLocaleDateString(),
         encounters: [{ event: eventName || "Unknown Event", metBy: myName || "Me", notes: noteText, date: new Date().toLocaleDateString() }]
@@ -191,10 +193,10 @@ export default function Home() {
   };
 
   const handleExportCSV = () => {
-    const headers = ["First Name","Last Name","Title","Account Name","Email","Phone","Website","Lead Source","Description","Follow-Up Task","Follow-Up Date","Event","Met By","Status","Priority"];
+    const headers = ["First Name","Last Name","Title","Account Name","Email","Phone","Website","Lead Source","Description","Follow-Up Task","Follow-Up Date","Event","Met By","Contact Type","Status","Priority"];
     const rows = contacts.map(c => {
       const parts = (c.name||"").trim().split(" ");
-      return [parts.slice(0,-1).join(" "), parts[parts.length-1]||"", c.title, c.company, c.email, c.phone, c.website, "Event", c.notes, c.follow_up_task, c.follow_up_date, c.event_name, c.met_by, c.status, c.priority].map(v => `"${(v||"").replace(/"/g,'""')}"`);
+      return [parts.slice(0,-1).join(" "), parts[parts.length-1]||"", c.title, c.company, c.email, c.phone, c.website, "Event", c.notes, c.follow_up_task, c.follow_up_date, c.event_name, c.met_by, c.contact_type, c.status, c.priority].map(v => `"${(v||"").replace(/"/g,'""')}"`);
     });
     const csv = [headers,...rows].map(r=>r.join(",")).join("\n");
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download = "salesforce-contacts.csv"; a.click();
@@ -386,11 +388,16 @@ export default function Home() {
                     </div>
                   </div>
                   <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end",flexShrink:0}}>
-                    <select className="inp" style={{width:130,fontSize:"0.8rem",padding:"5px 28px 5px 10px"}} value={c.status}
+                    <select className="inp" style={{width:150,fontSize:"0.8rem",padding:"5px 28px 5px 10px"}} value={c.contact_type||""}
+                      onChange={e=>{e.stopPropagation();handleUpdateField(c.id,"contact_type",e.target.value)}}>
+                      <option value="">Type...</option>
+                      {CONTACT_TYPES.filter(Boolean).map(t=><option key={t}>{t}</option>)}
+                    </select>
+                    <select className="inp" style={{width:150,fontSize:"0.8rem",padding:"5px 28px 5px 10px"}} value={c.status}
                       onChange={e=>{e.stopPropagation();handleUpdateField(c.id,"status",e.target.value)}}>
                       {STATUSES.map(s=><option key={s}>{s}</option>)}
                     </select>
-                    <select className="inp" style={{width:130,fontSize:"0.8rem",padding:"5px 28px 5px 10px"}} value={c.priority}
+                    <select className="inp" style={{width:150,fontSize:"0.8rem",padding:"5px 28px 5px 10px"}} value={c.priority}
                       onChange={e=>{e.stopPropagation();handleUpdateField(c.id,"priority",e.target.value)}}>
                       {PRIORITIES.map(p=><option key={p}>{p}</option>)}
                     </select>
@@ -451,4 +458,3 @@ export default function Home() {
     </div>
   );
 }
-
