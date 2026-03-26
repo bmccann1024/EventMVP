@@ -4,7 +4,7 @@ const API_URL = "https://api.anthropic.com/v1/messages";
 const SUPABASE_URL = "https://mfrqfbgtnmxmiajymsjt.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mcnFmYmd0bm14bWlhanltc2p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0ODUwOTQsImV4cCI6MjA5MDA2MTA5NH0.Ub3jN--Ai__o3TfEOKg077C-ma_RspF38-1JUZnEzqw";
 
-const TEMPLATE_TYPES = ["General Follow-Up", "Membership", "Sponsorship", "Council", "Partnership", "Education"];
+const TEMPLATE_TYPES = ["General Follow-Up", "Membership", "Sponsorship", "Council", "Education"];
 const CONTACT_TYPES = ["", "Member", "Non-Member", "Prospect", "Distributor", "Buyer Group", "Channel Partner", "Thought Leader", "Sponsor", "Affiliate", "Affiliate Prospect"];
 const STATUSES = ["New", "Contacted", "In Progress", "Closed"];
 const GROUP = ["", "OE", "Aftermarket", "Both"];
@@ -213,7 +213,7 @@ export default function Home() {
   const dueSoonCount = contacts.filter(c=>isDueSoon(c.follow_up_date)).length;
 
   return (
-    <div style={{minHeight:"100vh",background:"#faf8f5",fontFamily:"'Instrument Sans',sans-serif",color:"#1a1a1a"}}>
+    <div style={{minHeight:"100vh",background:"#222222",fontFamily:"'Instrument Sans',sans-serif",color:"#1a1a1a"}}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
