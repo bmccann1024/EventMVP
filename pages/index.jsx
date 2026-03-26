@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+iimport { useState, useRef, useEffect } from "react";
 
 const API_URL = "https://api.anthropic.com/v1/messages";
 const SUPABASE_URL = "https://mfrqfbgtnmxmiajymsjt.supabase.co";
@@ -8,7 +8,7 @@ const TEMPLATE_TYPES = ["General Follow-Up", "Membership", "Sponsorship", "Counc
 const CONTACT_TYPES = ["", "Member", "Non-Member", "Prospect", "Distributor", "Buyer Group", "Channel Partner", "Thought Leader", "Sponsor", "Affiliate", "Affiliate Prospect"];
 const STATUSES = ["New", "Contacted", "In Progress", "Closed"];
 const GROUP = ["", "OE", "Aftermarket", "Both"];
-const PRIORITIES = ["🔴 Hot", "🟡 Warm", "⚪ Cold"];
+const PRIORITIES = ["🔴 Hot", "🟠 Warm", "⚪ Cold"];
 
 async function dbGetContacts() {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/contacts?order=created_at.desc`, {
