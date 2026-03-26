@@ -8,7 +8,7 @@ const TEMPLATE_TYPES = ["General Follow-Up", "Membership", "Sponsorship", "Counc
 const CONTACT_TAGS = ["OE Member","OE Non-Member","OE Prospect","OE Affiliate","OE Affiliate Prospect","OE Thought Leader","AM Member","AM Non-Member","AM Prospect","AM Affiliate","AM Affiliate Prospect","AM Channel Partner","AM Thought Leader","OEM","Supplier Prospect"];
 const MARKET_SEGMENTS = ["Auto", "Commercial Vehicle", "Reman"];
 const STATUSES = ["New", "Contacted", "In Progress", "Closed"];
-const PRIORITIES = ["🌶️ Hot", "☀️Warm", "🥶Cold"];
+const PRIORITIES = ["Hot", "Warm", "Cold"];
 
 const RED = "#E71A13";
 
@@ -119,6 +119,8 @@ export default function Home() {
   const [search, setSearch] = useState("");
   const [filterEvent, setFilterEvent] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const [filterSegment, setFilterSegment] = useState("");
+  const [filterTag, setFilterTag] = useState("");
   const [newSegments, setNewSegments] = useState([]);
   const [newTags, setNewTags] = useState([]);
   const fileRef = useRef();
@@ -239,7 +241,10 @@ export default function Home() {
   const filtered = contacts.filter(c => {
     const q = search.toLowerCase();
     return (!q || [c.name,c.company,c.email,c.notes,c.event_name].some(f=>f?.toLowerCase().includes(q))) &&
-           (!filterEvent || c.event_name===filterEvent) && (!filterStatus || c.status===filterStatus);
+           (!filterEvent || c.event_name===filterEvent) &&
+           (!filterStatus || c.status===filterStatus) &&
+           (!filterSegment || (c.segments||[]).includes(filterSegment)) &&
+           (!filterTag || (c.contact_tags||[]).includes(filterTag));
   });
 
   const overdueCount = contacts.filter(c=>isOverdue(c.follow_up_date)).length;
@@ -420,6 +425,17 @@ export default function Home() {
                 {STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
               </select>
               {contacts.length>0&&<button className="btn btn-p" onClick={handleExportCSV}>⬇ Salesforce CSV</button>}
+            </div>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+              <select className="inp" value={filterSegment} onChange={e=>setFilterSegment(e.target.value)} style={{width:"auto",flex:"0 0 auto"}}>
+                <option value="">All Segments</option>
+                {MARKET_SEGMENTS.map(s=><option key={s} value={s}>{s}</option>)}
+              </select>
+              <select className="inp" value={filterTag} onChange={e=>setFilterTag(e.target.value)} style={{width:"auto",flex:"0 0 auto"}}>
+                <option value="">All Classifications</option>
+                {CONTACT_TAGS.map(t=><option key={t} value={t}>{t}</option>)}
+              </select>
+              {(filterSegment||filterTag||filterEvent||filterStatus||search)&&<button className="btn btn-g" onClick={()=>{setFilterSegment("");setFilterTag("");setFilterEvent("");setFilterStatus("");setSearch("");}}>✕ Clear Filters</button>}
             </div>
 
             {loadingContacts&&<div style={{textAlign:"center",padding:"40px 0",color:"#aaa"}}>Loading contacts...</div>}
