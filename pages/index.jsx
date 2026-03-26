@@ -6,9 +6,9 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 const TEMPLATE_TYPES = ["General Follow-Up", "Membership", "Sponsorship", "Council", "Partnership", "Demo Request"];
 const CONTACT_TAGS = ["OE Member","OE Non-Member","OE Prospect","OE Affiliate","OE Affiliate Prospect","OE Thought Leader","AM Member","AM Non-Member","AM Prospect","AM Affiliate","AM Affiliate Prospect","AM Channel Partner","AM Thought Leader","OEM","Supplier Prospect"];
-const MARKET_SEGMENTS = ["Auto", "Commercial Vehicle", "Reman"];
-const STATUSES = ["New", "Contacted", "In Progress", "Closed"];
-const PRIORITIES = ["Hot", "Warm", "Cold"];
+const MARKET_SEGMENTS = ["🚗Auto", "🚚Commercial Vehicle", "💚Reman"];
+const STATUSES = ["🎉New", "📲Contacted", "🥤In Progress", "✅Complete"];
+const PRIORITIES = ["🌶️Hot", "☀️Warm", "🥶Cold"];
 
 const RED = "#E71A13";
 
