@@ -1,9 +1,43 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
 const API_URL = "https://api.anthropic.com/v1/messages";
+const SUPABASE_URL = "https://mfrqfbgtnmxmiajymsjt.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mcnFmYmd0bm14bWlhanltc2p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0ODUwOTQsImV4cCI6MjA5MDA2MTA5NH0.Ub3jN--Ai__o3TfEOKg077C-ma_RspF38-1JUZnEzqw";
+
 const TEMPLATE_TYPES = ["General Follow-Up", "Membership", "Sponsorship", "Council", "Partnership", "Demo Request"];
 const STATUSES = ["New", "Contacted", "In Progress", "Closed"];
 const PRIORITIES = ["🔴 Hot", "🟡 Warm", "⚪ Cold"];
+
+async function dbGetContacts() {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/contacts?order=created_at.desc`, {
+    headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
+  });
+  return res.json();
+}
+
+async function dbAddContact(contact) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/contacts`, {
+    method: "POST",
+    headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json", "Prefer": "return=representation" },
+    body: JSON.stringify(contact)
+  });
+  return res.json();
+}
+
+async function dbUpdateContact(id, updates) {
+  await fetch(`${SUPABASE_URL}/rest/v1/contacts?id=eq.${id}`, {
+    method: "PATCH",
+    headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify(updates)
+  });
+}
+
+async function dbDeleteContact(id) {
+  await fetch(`${SUPABASE_URL}/rest/v1/contacts?id=eq.${id}`, {
+    method: "DELETE",
+    headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
+  });
+}
 
 function isSimilar(a, b) {
   if (!a || !b) return false;
@@ -38,6 +72,7 @@ export default function Home() {
   const [contacts, setContacts] = useState([]);
   const [tab, setTab] = useState("add");
   const [loading, setLoading] = useState(false);
+  const [loadingContacts, setLoadingContacts] = useState(true);
   const [status, setStatus] = useState("");
   const [noteText, setNoteText] = useState("");
   const [eventName, setEventName] = useState("");
@@ -55,7 +90,18 @@ export default function Home() {
   const [filterStatus, setFilterStatus] = useState("");
   const fileRef = useRef();
 
-  const events = [...new Set(contacts.map(c => c.eventName).filter(Boolean))];
+  useEffect(() => {
+    const savedKey = localStorage.getItem("eventmvp_apikey");
+    const savedName = localStorage.getItem("eventmvp_name");
+    if (savedKey) { setApiKey(savedKey); setApiKeySaved(true); }
+    if (savedName) setMyName(savedName);
+    dbGetContacts().then(data => {
+      if (Array.isArray(data)) setContacts(data.map(c => ({ ...c, encounters: c.encounters || [] })));
+      setLoadingContacts(false);
+    }).catch(() => setLoadingContacts(false));
+  }, []);
+
+  const events = [...new Set(contacts.map(c => c.event_name).filter(Boolean))];
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -85,8 +131,7 @@ export default function Home() {
         const text = await callClaude(apiKey, [{ role: "user", content: `Parse this event note. Return ONLY JSON: {"name":"","title":"","company":"","email":"","phone":"","notes":"","followUpTask":"","followUpDate":""}. followUpDate in YYYY-MM-DD if mentioned. Note: "${noteText}"` }]);
         noteData = parseJSON(text);
       }
-      const merged = {
-        id: Date.now(),
+      const newContact = {
         name: cardData.name || noteData.name || "",
         title: cardData.title || noteData.title || "",
         company: cardData.company || noteData.company || "",
@@ -95,17 +140,18 @@ export default function Home() {
         website: cardData.website || "",
         linkedin: cardData.linkedin || "",
         notes: noteText,
-        followUpTask: noteData.followUpTask || "",
-        followUpDate: noteData.followUpDate || "",
-        eventName: eventName || "Unknown Event",
-        metBy: myName || "Me",
+        follow_up_task: noteData.followUpTask || "",
+        follow_up_date: noteData.followUpDate || "",
+        event_name: eventName || "Unknown Event",
+        met_by: myName || "Me",
         status: "New", priority: "⚪ Cold",
-        addedAt: new Date().toLocaleDateString(),
+        added_at: new Date().toLocaleDateString(),
         encounters: [{ event: eventName || "Unknown Event", metBy: myName || "Me", notes: noteText, date: new Date().toLocaleDateString() }]
       };
-      const dup = contacts.find(c => isSimilar(c, merged));
-      if (dup) { setDupWarning({ existing: dup, incoming: merged }); setLoading(false); setStatus(""); return; }
-      setContacts(prev => [...prev, merged]);
+      const dup = contacts.find(c => isSimilar(c, newContact));
+      if (dup) { setDupWarning({ existing: dup, incoming: newContact }); setLoading(false); setStatus(""); return; }
+      const saved = await dbAddContact(newContact);
+      if (Array.isArray(saved) && saved[0]) setContacts(prev => [saved[0], ...prev]);
       setStatus("✅ Contact added!");
       setNoteText(""); setCardImage(null); setCardBase64(null);
       setTimeout(() => { setStatus(""); setTab("list"); }, 1200);
@@ -113,9 +159,12 @@ export default function Home() {
     setLoading(false);
   };
 
-  const handleMergeDup = () => {
+  const handleMergeDup = async () => {
     const { existing, incoming } = dupWarning;
-    setContacts(prev => prev.map(c => c.id === existing.id ? { ...c, notes: [c.notes, incoming.notes].filter(Boolean).join("\n---\n"), encounters: [...(c.encounters||[]), ...(incoming.encounters||[])] } : c));
+    const mergedNotes = [existing.notes, incoming.notes].filter(Boolean).join("\n---\n");
+    const mergedEncounters = [...(existing.encounters || []), ...(incoming.encounters || [])];
+    await dbUpdateContact(existing.id, { notes: mergedNotes, encounters: mergedEncounters });
+    setContacts(prev => prev.map(c => c.id === existing.id ? { ...c, notes: mergedNotes, encounters: mergedEncounters } : c));
     setDupWarning(null); setNoteText(""); setCardImage(null); setCardBase64(null);
     setStatus("✅ Notes merged!"); setTimeout(() => { setStatus(""); setTab("list"); }, 1500);
   };
@@ -124,17 +173,28 @@ export default function Home() {
     if (!apiKeySaved) return;
     setGeneratingEmail(true); setEmailDraft("");
     try {
-      const text = await callClaude(apiKey, [{ role: "user", content: `Write a professional, warm, personalized follow-up email.\nTemplate: ${emailTemplateType}\nName: ${contact.name}\nTitle: ${contact.title}\nCompany: ${contact.company}\nEvent: ${contact.eventName}\nMet by: ${contact.metBy}\nNotes: ${contact.notes}\nFollow-up task: ${contact.followUpTask}\nWrite only the email body, no subject line. Sign off as ${contact.metBy || "the team"}.` }]);
+      const text = await callClaude(apiKey, [{ role: "user", content: `Write a professional, warm, personalized follow-up email.\nTemplate: ${emailTemplateType}\nName: ${contact.name}\nTitle: ${contact.title}\nCompany: ${contact.company}\nEvent: ${contact.event_name}\nMet by: ${contact.met_by}\nNotes: ${contact.notes}\nFollow-up task: ${contact.follow_up_task}\nWrite only the email body, no subject line. Sign off as ${contact.met_by || "the team"}.` }]);
       setEmailDraft(text);
     } catch (e) { setEmailDraft("Error: " + e.message); }
     setGeneratingEmail(false);
+  };
+
+  const handleUpdateField = async (id, field, value) => {
+    await dbUpdateContact(id, { [field]: value });
+    setContacts(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c));
+  };
+
+  const handleDelete = async (id) => {
+    await dbDeleteContact(id);
+    setContacts(prev => prev.filter(c => c.id !== id));
+    setSelectedContact(null);
   };
 
   const handleExportCSV = () => {
     const headers = ["First Name","Last Name","Title","Account Name","Email","Phone","Website","Lead Source","Description","Follow-Up Task","Follow-Up Date","Event","Met By","Status","Priority"];
     const rows = contacts.map(c => {
       const parts = (c.name||"").trim().split(" ");
-      return [parts.slice(0,-1).join(" "), parts[parts.length-1]||"", c.title, c.company, c.email, c.phone, c.website, "Event", c.notes, c.followUpTask, c.followUpDate, c.eventName, c.metBy, c.status, c.priority].map(v => `"${(v||"").replace(/"/g,'""')}"`);
+      return [parts.slice(0,-1).join(" "), parts[parts.length-1]||"", c.title, c.company, c.email, c.phone, c.website, "Event", c.notes, c.follow_up_task, c.follow_up_date, c.event_name, c.met_by, c.status, c.priority].map(v => `"${(v||"").replace(/"/g,'""')}"`);
     });
     const csv = [headers,...rows].map(r=>r.join(",")).join("\n");
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download = "salesforce-contacts.csv"; a.click();
@@ -142,12 +202,12 @@ export default function Home() {
 
   const filtered = contacts.filter(c => {
     const q = search.toLowerCase();
-    return (!q || [c.name,c.company,c.email,c.notes,c.eventName].some(f=>f?.toLowerCase().includes(q))) &&
-           (!filterEvent || c.eventName===filterEvent) && (!filterStatus || c.status===filterStatus);
+    return (!q || [c.name,c.company,c.email,c.notes,c.event_name].some(f=>f?.toLowerCase().includes(q))) &&
+           (!filterEvent || c.event_name===filterEvent) && (!filterStatus || c.status===filterStatus);
   });
 
-  const overdueCount = contacts.filter(c=>isOverdue(c.followUpDate)).length;
-  const dueSoonCount = contacts.filter(c=>isDueSoon(c.followUpDate)).length;
+  const overdueCount = contacts.filter(c=>isOverdue(c.follow_up_date)).length;
+  const dueSoonCount = contacts.filter(c=>isDueSoon(c.follow_up_date)).length;
 
   return (
     <div style={{minHeight:"100vh",background:"#faf8f5",fontFamily:"'Instrument Sans',sans-serif",color:"#1a1a1a"}}>
@@ -188,7 +248,7 @@ export default function Home() {
         <div style={{maxWidth:900,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 0 0"}}>
           <div>
             <div style={{fontFamily:"'Playfair Display',serif",fontSize:"1.6rem",fontWeight:800,letterSpacing:"-0.5px"}}>Event<span style={{color:"#c17f3e"}}>Desk</span></div>
-            <div style={{fontSize:"0.72rem",color:"#9a8a78",marginTop:1,letterSpacing:"0.08em",textTransform:"uppercase"}}>AI-Powered Contact Tracker</div>
+            <div style={{fontSize:"0.72rem",color:"#9a8a78",marginTop:1,letterSpacing:"0.08em",textTransform:"uppercase"}}>Shared Team Contact Tracker</div>
           </div>
           <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
             {overdueCount>0&&<span className="badge br">⚠ {overdueCount} overdue</span>}
@@ -211,16 +271,16 @@ export default function Home() {
           <div style={{display:"flex",flexDirection:"column",gap:20,maxWidth:520}}>
             <div className="card">
               <div style={{fontFamily:"'Playfair Display',serif",fontWeight:700,marginBottom:14}}>🔑 Anthropic API Key</div>
-              <p style={{fontSize:"0.85rem",color:"#7a6a58",marginBottom:14,lineHeight:1.6}}>Get a free key at <strong>console.anthropic.com</strong> — includes $5 free credits. Your key stays in your browser only.</p>
+              <p style={{fontSize:"0.85rem",color:"#7a6a58",marginBottom:14,lineHeight:1.6}}>Get a free key at <strong>console.anthropic.com</strong>. Saved to your browser only.</p>
               <input className="inp" type="password" placeholder="sk-ant-..." value={apiKey} onChange={e=>setApiKey(e.target.value)}/>
               <div style={{display:"flex",gap:10,marginTop:12}}>
-                <button className="btn btn-p" onClick={()=>{setApiKeySaved(true);setStatus("✅ API key saved!");setTimeout(()=>setStatus(""),2000)}}>Save Key</button>
+                <button className="btn btn-p" onClick={()=>{localStorage.setItem("eventmvp_apikey",apiKey);setApiKeySaved(true);setStatus("✅ API key saved!");setTimeout(()=>setStatus(""),2000)}}>Save Key</button>
                 {apiKeySaved&&<span className="badge bg" style={{alignSelf:"center"}}>✓ Saved</span>}
               </div>
             </div>
             <div className="card">
               <div style={{fontFamily:"'Playfair Display',serif",fontWeight:700,marginBottom:12}}>👤 Your Name</div>
-              <input className="inp" type="text" placeholder="e.g. Shannon" value={myName} onChange={e=>setMyName(e.target.value)}/>
+              <input className="inp" type="text" placeholder="e.g. Shannon" value={myName} onChange={e=>{setMyName(e.target.value);localStorage.setItem("eventmvp_name",e.target.value)}}/>
             </div>
             {status&&<div style={{background:"#e8f5e9",border:"1px solid #c8e6c9",borderRadius:10,padding:"12px 16px",color:"#2e7d32",fontSize:"0.88rem"}}>{status}</div>}
           </div>
@@ -228,7 +288,7 @@ export default function Home() {
 
         {tab==="add"&&(
           <div style={{display:"flex",flexDirection:"column",gap:18}}>
-            {!apiKeySaved&&<div style={{background:"#fff3e0",border:"1.5px solid #ffe0b2",borderRadius:12,padding:"14px 18px",fontSize:"0.88rem",color:"#c17f3e"}}>⚠ Go to <strong>Settings</strong> tab to save your API key first.</div>}
+            {!apiKeySaved&&<div style={{background:"#fff3e0",border:"1.5px solid #ffe0b2",borderRadius:12,padding:"14px 18px",fontSize:"0.88rem",color:"#c17f3e"}}>⚠ Go to <strong>Settings</strong> to save your API key first.</div>}
             <div className="g2">
               <div>
                 <label style={{fontSize:"0.8rem",fontWeight:600,color:"#7a6a58",display:"block",marginBottom:6,textTransform:"uppercase",letterSpacing:"0.05em"}}>Event Name</label>
@@ -258,7 +318,7 @@ export default function Home() {
             <div className="card">
               <div style={{fontFamily:"'Playfair Display',serif",fontWeight:700,marginBottom:8}}>🎤 Voice / Text Notes</div>
               <p style={{fontSize:"0.82rem",color:"#9a8a78",marginBottom:12}}>Paste voice-to-text or type freely. Include follow-up timing like "follow up next week".</p>
-              <textarea className="inp" rows={5} placeholder='e.g. "Met David Chen, VP Sales at TechCorp. Interested in gold sponsorship. Follow up in 3 days to send deck."' value={noteText} onChange={e=>setNoteText(e.target.value)}/>
+              <textarea className="inp" rows={5} placeholder='e.g. "Met David Chen, VP Sales at TechCorp. Interested in gold sponsorship. Follow up in 3 days."' value={noteText} onChange={e=>setNoteText(e.target.value)}/>
             </div>
             {dupWarning&&(
               <div style={{background:"#fff3e0",border:"1.5px solid #ffcc80",borderRadius:14,padding:20}}>
@@ -267,7 +327,7 @@ export default function Home() {
                 <p style={{fontSize:"0.85rem",color:"#7a6a58",marginBottom:14}}>Merge these notes into their existing record?</p>
                 <div style={{display:"flex",gap:10}}>
                   <button className="btn btn-p" onClick={handleMergeDup}>Merge Notes</button>
-                  <button className="btn btn-g" onClick={()=>{setDupWarning(null);setContacts(prev=>[...prev,dupWarning.incoming]);setNoteText("");setCardImage(null);setCardBase64(null);setTimeout(()=>setTab("list"),800)}}>Add as New</button>
+                  <button className="btn btn-g" onClick={async()=>{setDupWarning(null);const saved=await dbAddContact(dupWarning.incoming);if(Array.isArray(saved)&&saved[0])setContacts(prev=>[saved[0],...prev]);setNoteText("");setCardImage(null);setCardBase64(null);setTimeout(()=>setTab("list"),800)}}>Add as New</button>
                   <button className="btn btn-g" onClick={()=>setDupWarning(null)}>Cancel</button>
                 </div>
               </div>
@@ -299,7 +359,8 @@ export default function Home() {
               </select>
               {contacts.length>0&&<button className="btn btn-p" onClick={handleExportCSV}>⬇ Salesforce CSV</button>}
             </div>
-            {filtered.length===0&&(
+            {loadingContacts&&<div style={{textAlign:"center",padding:"40px 0",color:"#9a8a78"}}>Loading contacts...</div>}
+            {!loadingContacts&&filtered.length===0&&(
               <div style={{textAlign:"center",padding:"60px 0",color:"#9a8a78"}}>
                 <div style={{fontSize:"3rem",marginBottom:12}}>📭</div>
                 <div style={{fontFamily:"'Playfair Display',serif",fontSize:"1.1rem",marginBottom:6}}>No contacts yet</div>
@@ -313,24 +374,24 @@ export default function Home() {
                     <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                       <span style={{fontFamily:"'Playfair Display',serif",fontSize:"1.05rem",fontWeight:700}}>{c.name||<span style={{color:"#9a8a78"}}>Unknown</span>}</span>
                       <span style={{fontSize:"0.82rem"}}>{c.priority}</span>
-                      {isOverdue(c.followUpDate)&&<span className="badge br">Overdue</span>}
-                      {isDueSoon(c.followUpDate)&&!isOverdue(c.followUpDate)&&<span className="badge ba">Due Soon</span>}
-                      {c.eventName&&<span className="badge bb">{c.eventName}</span>}
+                      {isOverdue(c.follow_up_date)&&<span className="badge br">Overdue</span>}
+                      {isDueSoon(c.follow_up_date)&&!isOverdue(c.follow_up_date)&&<span className="badge ba">Due Soon</span>}
+                      {c.event_name&&<span className="badge bb">{c.event_name}</span>}
                     </div>
                     <div style={{color:"#7a6a58",fontSize:"0.84rem",marginTop:3}}>{[c.title,c.company].filter(Boolean).join(" · ")}</div>
                     <div style={{display:"flex",gap:14,flexWrap:"wrap",marginTop:8,fontSize:"0.82rem",color:"#5a4a38"}}>
                       {c.email&&<span>✉ {c.email}</span>}
                       {c.phone&&<span>📞 {c.phone}</span>}
-                      {c.metBy&&<span>👤 {c.metBy}</span>}
+                      {c.met_by&&<span>👤 {c.met_by}</span>}
                     </div>
                   </div>
                   <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end",flexShrink:0}}>
                     <select className="inp" style={{width:130,fontSize:"0.8rem",padding:"5px 28px 5px 10px"}} value={c.status}
-                      onChange={e=>{e.stopPropagation();setContacts(prev=>prev.map(x=>x.id===c.id?{...x,status:e.target.value}:x))}}>
+                      onChange={e=>{e.stopPropagation();handleUpdateField(c.id,"status",e.target.value)}}>
                       {STATUSES.map(s=><option key={s}>{s}</option>)}
                     </select>
                     <select className="inp" style={{width:130,fontSize:"0.8rem",padding:"5px 28px 5px 10px"}} value={c.priority}
-                      onChange={e=>{e.stopPropagation();setContacts(prev=>prev.map(x=>x.id===c.id?{...x,priority:e.target.value}:x))}}>
+                      onChange={e=>{e.stopPropagation();handleUpdateField(c.id,"priority",e.target.value)}}>
                       {PRIORITIES.map(p=><option key={p}>{p}</option>)}
                     </select>
                   </div>
@@ -356,10 +417,10 @@ export default function Home() {
                         <div style={{background:"#faf8f5",borderRadius:8,padding:"10px 14px",fontSize:"0.85rem",color:"#3a2e22",lineHeight:1.6}}>{c.notes}</div>
                       </div>
                     )}
-                    {c.followUpTask&&(
-                      <div style={{marginBottom:16,background:isOverdue(c.followUpDate)?"#fee":"#fff3e0",borderRadius:8,padding:"10px 14px",fontSize:"0.85rem",borderLeft:`3px solid ${isOverdue(c.followUpDate)?"#c0392b":"#c17f3e"}`}}>
-                        <strong style={{color:isOverdue(c.followUpDate)?"#c0392b":"#c17f3e"}}>🔔 {c.followUpTask}</strong>
-                        {c.followUpDate&&<span style={{color:"#7a6a58"}}> · {c.followUpDate}</span>}
+                    {c.follow_up_task&&(
+                      <div style={{marginBottom:16,background:isOverdue(c.follow_up_date)?"#fee":"#fff3e0",borderRadius:8,padding:"10px 14px",fontSize:"0.85rem",borderLeft:`3px solid ${isOverdue(c.follow_up_date)?"#c0392b":"#c17f3e"}`}}>
+                        <strong style={{color:isOverdue(c.follow_up_date)?"#c0392b":"#c17f3e"}}>🔔 {c.follow_up_task}</strong>
+                        {c.follow_up_date&&<span style={{color:"#7a6a58"}}> · {c.follow_up_date}</span>}
                       </div>
                     )}
                     <div className="dv"/>
@@ -379,7 +440,7 @@ export default function Home() {
                       </div>
                     )}
                     <div className="dv"/>
-                    <button className="btn btn-d btn" onClick={()=>{setContacts(prev=>prev.filter(x=>x.id!==c.id));setSelectedContact(null)}}>🗑 Delete Contact</button>
+                    <button className="btn btn-d btn" onClick={()=>handleDelete(c.id)}>🗑 Delete Contact</button>
                   </div>
                 )}
               </div>
@@ -390,3 +451,4 @@ export default function Home() {
     </div>
   );
 }
+
