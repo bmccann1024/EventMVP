@@ -296,7 +296,7 @@ export default function Home() {
               <span style={{color:"#fff",fontSize:"1rem"}}>📇</span>
             </div>
             <div>
-              <div style={{fontFamily:"'DM Serif Display',serif",fontSize:"1.4rem",color:"#323232",letterSpacing:"-0.3px"}}>EventDesk</div>
+              <div style={{fontFamily:"'DM Serif Display',serif",fontSize:"1.4rem",color:"#323232",letterSpacing:"-0.3px"}}>Event MVP</div>
               <div style={{fontSize:"0.68rem",color:"#999",textTransform:"uppercase",letterSpacing:"0.08em"}}>Team Contact Tracker</div>
             </div>
           </div>
